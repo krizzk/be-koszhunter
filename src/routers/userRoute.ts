@@ -7,13 +7,16 @@ import { verifyToken, verifyRole } from "../middlewares/authorization"
 const app = express()
 app.use(express.json())
 
-app.get(`/`, [verifyToken, verifyRole(["MANAGER"])], getAllUsers)
-app.get(`/profile`, [verifyToken, verifyRole(["CASHIER", "MANAGER"])], getUserById)
+app.get(`/`, [verifyToken, verifyRole(["ADMIN"])], getAllUsers)
+app.get(`/profile`, [verifyToken, verifyRole(["USER", "ADMIN"])], getUserById)
+
 app.post(`/create`, [uploadFile.single("profile_picture"), verifyAddUser], createUser)
-app.put(`/:id`, [verifyToken, verifyRole(["CASHIER", "MANAGER"]), uploadFile.single("profile_picture"), verifyEditUser], updateUser)
-app.put(`/profile/:id`, [verifyToken, verifyRole(["CASHIER", "MANAGER"]), uploadFile.single("profile_picture")], changePicture)
-app.delete(`/:id`, [verifyToken, verifyRole(["MANAGER"])], deleteUser)
+app.put(`/:id`, [verifyToken, verifyRole(["USER", "ADMIN"]), uploadFile.single("profile_picture"), verifyEditUser], updateUser)
+app.put(`/profile/:id`, [verifyToken, verifyRole(["USER", "ADMIN"]), uploadFile.single("profile_picture")], changePicture)
+app.delete(`/:id`, [verifyToken, verifyRole(["ADMIN"])], deleteUser)
+
 app.post(`/login`, [verifyAuthentication], authentication)
+
 
 export default app
 

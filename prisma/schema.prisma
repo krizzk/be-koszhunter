@@ -14,26 +14,56 @@ datasource db {
 }
 
 enum Role {
-  MANAGER
-  CASHIER
+  ADMIN
+  USER
 }
 
-enum Category {
-  FOOD
-  DRINK
-  SNACK
+enum Class {
+  CC_150_225
+  CC_250_UP
 }
 
 enum Payment {
   CASH
-  QRIS
+  BANK
 }
 
 enum Status {
   NEW
-  PAID
   DONE
 }
+
+enum STNK {
+  YES
+  NO
+}
+
+enum BPKB {
+  YES
+  NO
+}
+
+enum kilometer{
+  KM0_KM900
+  KM1000_KM2999
+  KM3000_KM4999
+  KM5000_KM6999
+  KM7000_UP
+}
+
+enum Brand {
+  HONDA
+  YAMAHA
+  SUZUKI
+  KAWASAKI
+  DUCATI
+  KTM
+  BMW
+  APRILIA
+  HARLEY_DAVIDSON
+  TRIUMPH
+}
+
 
 model User {
   id              Int      @id @default(autoincrement())
@@ -42,20 +72,27 @@ model User {
   email           String   @unique @default("")
   password        String   @default("")
   profile_picture String   @default("")
-  role            Role     @default(CASHIER)
+  role            Role     @default(USER)
+  phone_number    String   @default("")
+  // address         String   @default("") @db.Text
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   orderDetail     Order[]
 }
 
-model Menu {
+model Motorbike {
   id          Int         @id @default(autoincrement())
   uuid        String      @unique @default("")
   name        String      @default("")
+  brand       Brand       @default(HONDA)
+  Class       Class       @default(CC_150_225)
   price       Int         @default(0)
-  category    Category    @default(FOOD)
-  picture     String      @default("")
+  tax         String      @default("")
+  kilometer   kilometer   @default(KM0_KM900)
+  BPKB        BPKB        @default(NO)
+  STNK        STNK        @default(NO)
   description String      @default("") @db.Text
+  motorbike_picture     String      @default("")
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   orderLists  OrderList[]
@@ -64,8 +101,6 @@ model Menu {
 model Order {
   id             Int         @id @default(autoincrement())
   uuid           String      @unique @default("")
-  customer       String      @default("")
-  table_number   String      @default("")
   total_price    Int         @default(0)
   payment_method Payment     @default(CASH)
   status         Status      @default(NEW)
@@ -79,12 +114,12 @@ model Order {
 model OrderList {
   id        Int      @id @default(autoincrement())
   uuid      String   @unique @default("")
-  quantity  Int      @default(0)
   note      String   @default("") @db.Text
+  quantity  Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  Menu      Menu?    @relation(fields: [menuId], references: [id])
-  menuId    Int?
+  Motorbike      Motorbike?    @relation(fields: [MotorbikeId], references: [id])
+  MotorbikeId    Int?
   Order     Order?   @relation(fields: [orderId], references: [id])
   orderId   Int?
 }

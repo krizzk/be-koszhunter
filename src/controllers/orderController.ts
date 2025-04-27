@@ -3,46 +3,46 @@ import { PrismaClient } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
 
 const prisma = new PrismaClient({ errorFormat: "pretty" })
-export const getAllOrders = async (request: Request, response: Response) => {
-    try {
-        /** get requested data (data has been sent from request) */
-        const { search } = request.query
+// export const getAllOrders = async (request: Request, response: Response) => {
+//     try {
+//         /** get requested data (data has been sent from request) */
+//         const { search } = request.query
         
-        /** process to get order, contains means search name or table number of customer's order based on sent keyword */
-        const allOrders = await prisma.order.findMany({
-            where: {
-                OR: [
-                    { customer: { contains: search?.toString() || "" } },
-                    { table_number: { contains: search?.toString() || "" } }
-                ]
-            },
-            orderBy: { createdAt: "desc" }, /** sort by descending order date */
-            include: { 
-                User: true,
-                orderLists: {
-                    include: { Menu: true }
-                }
-            }
-        })
-        return response.json({
-            status: true,
-            data: allOrders,
-            message: `Order list has retrieved`
-        }).status(200)
-    } catch (error) {
-        return response
-            .json({
-                status: false,
-                message: `There is an error. ${error}`
-            })
-            .status(400)
-    }
-}
+//         /** process to get order, contains means search name or table number of customer's order based on sent keyword */
+//         const allOrders = await prisma.order.findMany({
+//             where: {
+//                 OR: [
+//                     { customer: { contains: search?.toString() || "" } },
+//                     { table_number: { contains: search?.toString() || "" } }
+//                 ]
+//             },
+//             orderBy: { createdAt: "desc" }, /** sort by descending order date */
+//             include: { 
+//                 User: true,
+//                 orderLists: {
+//                     include: { Motorbike: true }
+//                 }
+//             }
+//         })
+//         return response.json({
+//             status: true,
+//             data: allOrders,
+//             message: `Order list has retrieved`
+//         }).status(200)
+//     } catch (error) {
+//         return response
+//             .json({
+//                 status: false,
+//                 message: `There is an error. ${error}`
+//             })
+//             .status(400)
+//     }
+// }
 
 export const createOrder = async (request: Request, response: Response) => {
     try {
       /** get requested data (data has been sent from request) */
-      const { customer, table_number, payment_method, status, orderlists } = request.body
+      const { payment_method, status, orderlists } = request.body
       const user = request.body.user
       const uuid = uuidv4()
       /**
@@ -54,7 +54,7 @@ export const createOrder = async (request: Request, response: Response) => {
       let total_price = 0
       for (let index = 0; index < orderlists.length; index++) {
         const { menuId } = orderlists[index]
-        const detailMenu = await prisma.menu.findFirst({
+        const detailMenu = await prisma.motorbike.findFirst({
           where: {
             id: menuId,
           },
@@ -64,15 +64,10 @@ export const createOrder = async (request: Request, response: Response) => {
         total_price += detailMenu.price * orderlists[index].quantity
       }
   
-      // Ensure table_number is a string
-      const tableNumberStr = String(table_number)
-  
       /** process to save new order */
       const newOrder = await prisma.order.create({
         data: {
           uuid,
-          customer,
-          table_number: tableNumberStr, // Ensure it's a string
           total_price,
           payment_method,
           status,
@@ -88,7 +83,7 @@ export const createOrder = async (request: Request, response: Response) => {
           data: {
             uuid,
             orderId: newOrder.id,
-            menuId: Number(menuId),
+            MotorbikeId: Number(menuId),
             quantity: Number(quantity),
             note: note || "", // Ensure note is never null
           },
@@ -195,7 +190,7 @@ export const getOrderById = async (request: Request, response: Response) => {
           include: {
               User: true,
               orderLists: {
-                  include: { Menu: true }
+                  include: { Motorbike: true }
               }
           }
       });

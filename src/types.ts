@@ -8,6 +8,7 @@ declare global {
         name: string;
         email: string;
         role: string;
+        phone_number: string;
       };
     }
   }

@@ -7,12 +7,11 @@ export const getDashboard = async (request: Request, response: Response) => {
     try {
         /** process to get order, contains means search name or table number of customer's order based on sent keyword */
         const allUsers = await prisma.user.findMany()
-        const allMenus = await prisma.menu.findMany()
+        const allMotors = await prisma.motorbike.findMany()
         const newOrders = await prisma.order.findMany({
             where: {
                 OR: [
-                    { status: "NEW" },
-                    { status: "PAID"}
+                    { status: "NEW" }
                 ]},
         })
         const doneOrders = await prisma.order.findMany({
@@ -22,7 +21,7 @@ export const getDashboard = async (request: Request, response: Response) => {
             status: true,
             data: {
                 allUser: allUsers.length,
-                allMenus: allMenus.length,
+                allMotors: allMotors.length,
                 newOrder: newOrders.length,
                 doneOrder: doneOrders.length,
             },
@@ -43,7 +42,7 @@ export const getFavourite = async (request: Request, response: Response) => {
         // Mengambil semua order list yang ada
         const orderLists = await prisma.orderList.findMany({
             include: {
-                Menu: true, // Mengambil informasi menu
+                Motorbike: true, // Mengambil informasi menu
             },
         });
 
@@ -52,7 +51,7 @@ export const getFavourite = async (request: Request, response: Response) => {
 
         // Menghitung jumlah pemesanan untuk setiap menu
         orderLists.forEach(orderList => {
-            const menuName = orderList.Menu?.name; // Nama menu
+            const menuName = orderList.Motorbike?.name; // Nama menu
             if (menuName) {
                 if (!menuCount[menuName]) {
                     menuCount[menuName] = 0; // Inisialisasi jika belum ada
@@ -63,13 +62,13 @@ export const getFavourite = async (request: Request, response: Response) => {
 
         // Mengubah objek menjadi array untuk dikirim sebagai respons
         const result = Object.keys(menuCount).map(menuName => {
-            const menu = orderLists.find(orderList => orderList.Menu?.name === menuName)?.Menu;
+            const menu = orderLists.find(orderList => orderList.Motorbike?.name === menuName)?.Motorbike;
             return {
                 name: menuName,
                 count: menuCount[menuName],
-                picture: menu?.picture,
+                motorbike_picture: menu?.motorbike_picture,
                 price: menu?.price,
-                category: menu?.category,
+                Class: menu?.Class,
             };
         });
 

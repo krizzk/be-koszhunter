@@ -11,9 +11,8 @@ const orderListSchema = Joi.object({
   /** create schema when add new order's data */
   const addDataSchema = Joi.object({
     customer: Joi.string().required(),
-    table_number: Joi.alternatives().try(Joi.string(), Joi.number()).required(), // Accept both string and number
-    payment_method: Joi.string().valid("CASH", "QRIS").uppercase().required(),
-    status: Joi.string().valid("NEW", "PAID", "DONE").uppercase().required(),
+    payment_method: Joi.string().valid("CASH", "BANK").uppercase().required(),
+    status: Joi.string().valid("NEW","DONE").uppercase().required(),
     userId: Joi.number().optional(),
     orderlists: Joi.array().items(orderListSchema).min(1).required(),
     user: Joi.optional(),
@@ -21,7 +20,7 @@ const orderListSchema = Joi.object({
   
   /** create schema when edit status order's data */
   const editDataSchema = Joi.object({
-    status: Joi.string().valid("NEW", "PAID", "DONE").uppercase().required(),
+    status: Joi.string().valid("NEW","DONE").uppercase().required(),
     user: Joi.optional(),
   })
   

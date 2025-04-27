@@ -5,7 +5,7 @@ import { verifyRole, verifyToken } from "../middlewares/authorization"
 const app = express()
 app.use(express.json())
 
-app.get(`/dashboard`, [verifyToken, verifyRole(["CASHIER", "MANAGER"])], getDashboard)
-app.get(`/favorite`, [verifyToken, verifyRole(["CASHIER", "MANAGER"])], getFavourite)
+app.get(`/dashboard`, [verifyToken, verifyRole(["USER", "ADMIN"])], getDashboard)
+app.get(`/favorite`, [verifyToken, verifyRole(["USER", "ADMIN"])], getFavourite)
 
 export default app
