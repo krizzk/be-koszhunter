@@ -3,17 +3,18 @@ import Joi from 'joi'
 
 /** create schema for detail of orderlist */
 const orderListSchema = Joi.object({
-    menuId: Joi.number().required(),
-    quantity: Joi.number().required(),
+    motorId: Joi.number().required(),
+    quantity: Joi.number().optional(),
     note: Joi.string().allow("").optional(), // Allow empty string
   })
   
   /** create schema when add new order's data */
   const addDataSchema = Joi.object({
-    customer: Joi.string().required(),
+    // customer: Joi.string().required(),
     payment_method: Joi.string().valid("CASH", "BANK").uppercase().required(),
     status: Joi.string().valid("NEW","DONE").uppercase().required(),
     userId: Joi.number().optional(),
+    address: Joi.string().allow("").required(), // Allow empty string
     orderlists: Joi.array().items(orderListSchema).min(1).required(),
     user: Joi.optional(),
   })

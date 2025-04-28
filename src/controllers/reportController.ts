@@ -42,40 +42,38 @@ export const getFavourite = async (request: Request, response: Response) => {
         // Mengambil semua order list yang ada
         const orderLists = await prisma.orderList.findMany({
             include: {
-                Motorbike: true, // Mengambil informasi menu
+                Motorbike: true, // Mengambil informasi motorbike
             },
         });
 
-        // Membuat objek untuk menyimpan jumlah pemesanan per menu
-        const menuCount: { [key: string]: number } = {};
+        // Membuat objek untuk menyimpan jumlah pemesanan per brand
+        const brandCount: { [key: string]: number } = {};
 
-        // Menghitung jumlah pemesanan untuk setiap menu
+        // Menghitung jumlah pemesanan untuk setiap brand
         orderLists.forEach(orderList => {
-            const menuName = orderList.Motorbike?.name; // Nama menu
-            if (menuName) {
-                if (!menuCount[menuName]) {
-                    menuCount[menuName] = 0; // Inisialisasi jika belum ada
+            const brandName = orderList.Motorbike?.brand; // Nama brand
+            if (brandName) {
+                if (!brandCount[brandName]) {
+                    brandCount[brandName] = 0; // Inisialisasi jika belum ada
                 }
-                menuCount[menuName] += orderList.quantity; // Menambahkan jumlah pemesanan
+                brandCount[brandName] += orderList.quantity; // Menambahkan jumlah pemesanan
             }
         });
 
         // Mengubah objek menjadi array untuk dikirim sebagai respons
-        const result = Object.keys(menuCount).map(menuName => {
-            const menu = orderLists.find(orderList => orderList.Motorbike?.name === menuName)?.Motorbike;
+        const result = Object.keys(brandCount).map(brandName => {
             return {
-                name: menuName,
-                count: menuCount[menuName],
-                motorbike_picture: menu?.motorbike_picture,
-                price: menu?.price,
-                Class: menu?.Class,
+                brand: brandName,
+                count: brandCount[brandName],
+                price: orderLists.find(orderList => orderList.Motorbike?.brand === brandName)?.Motorbike?.price || 0,
+                motorbike_picture: orderLists.find(orderList => orderList.Motorbike?.brand === brandName)?.Motorbike?.motorbike_picture || "",
             };
         });
 
         return response.json({
             status: true,
             data: result,
-            message: "All report menu are retrieved",
+            message: "All report brands are retrieved",
         }).status(200);
     } catch (error) {
         return response
@@ -83,6 +81,6 @@ export const getFavourite = async (request: Request, response: Response) => {
                 status: false,
                 message: `There is an error. ${error}`
             })
-            .status(400)
+            .status(400);
     }
 }

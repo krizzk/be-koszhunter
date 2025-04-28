@@ -104,6 +104,7 @@ model Order {
   total_price    Int         @default(0)
   payment_method Payment     @default(CASH)
   status         Status      @default(NEW)
+  address        String      @default("") @db.Text
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   orderLists     OrderList[]
@@ -112,14 +113,14 @@ model Order {
 }
 
 model OrderList {
-  id        Int      @id @default(autoincrement())
-  uuid      String   @unique @default("")
-  note      String   @default("") @db.Text
-  quantity  Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  uuid           String   @unique @default("")
+  note           String   @default("") @db.Text
+  quantity       Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
   Motorbike      Motorbike?    @relation(fields: [MotorbikeId], references: [id])
   MotorbikeId    Int?
-  Order     Order?   @relation(fields: [orderId], references: [id])
-  orderId   Int?
+  Order          Order?   @relation(fields: [orderId], references: [id])
+  orderId        Int?
 }
