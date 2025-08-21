@@ -14,113 +14,147 @@ datasource db {
 }
 
 enum Role {
-  ADMIN
-  USER
+  OWNER
+  SOCIETY
 }
 
-enum Class {
-  CC_150_225
-  CC_250_UP
+enum GenderType {
+  PUTRA
+  PUTRI
+  CAMPUR
 }
 
-enum Payment {
-  CASH
-  BANK
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
 }
 
-enum Status {
-  NEW
-  DONE
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
 }
 
-enum STNK {
-  YES
-  NO
+enum FacilityType {
+  KOS_FACILITY      // Fasilitas umum kos (WiFi, Parkir, Dapur Bersama, dll)
+  ROOM_FACILITY     // Fasilitas kamar (AC, Kasur, Lemari, dll)
 }
-
-enum BPKB {
-  YES
-  NO
-}
-
-enum kilometer{
-  KM0_KM900
-  KM1000_KM2999
-  KM3000_KM4999
-  KM5000_KM6999
-  KM7000_UP
-}
-
-enum Brand {
-  HONDA
-  YAMAHA
-  SUZUKI
-  KAWASAKI
-  DUCATI
-  KTM
-  BMW
-  APRILIA
-  HARLEY_DAVIDSON
-  TRIUMPH
-}
-
 
 model User {
-  id              Int      @id @default(autoincrement())
-  uuid            String   @unique @default("")
-  name            String   @default("")
-  email           String   @unique @default("")
-  password        String   @default("")
-  profile_picture String   @default("")
-  role            Role     @default(USER)
-  phone_number    String   @default("")
-  // address         String   @default("") @db.Text
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  orderDetail     Order[]
+  id              Int       @id @default(autoincrement())
+  uuid            String    @unique @default(uuid())
+  name            String    @default("")
+  email           String    @unique @default("")
+  password        String    @default("")
+  profile_picture String    @default("") // profile picture 
+  role            Role      @default(SOCIETY)
+  phone_number    String    @default("")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  // Relations
+  bookings        Booking[]
+  ownedKos        Kos[]     @relation("KosOwner")
+  reviews         Review[]  @relation("UserReviews")
+  replies         Review[]  @relation("OwnerReplies")
 }
 
-model Motorbike {
-  id          Int         @id @default(autoincrement())
-  uuid        String      @unique @default("")
-  name        String      @default("")
-  brand       Brand       @default(HONDA)
-  Class       Class       @default(CC_150_225)
-  price       Int         @default(0)
-  tax         String      @default("")
-  kilometer   kilometer   @default(KM0_KM900)
-  BPKB        BPKB        @default(NO)
-  STNK        STNK        @default(NO)
-  description String      @default("") @db.Text
-  motorbike_picture     String      @default("")
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  orderLists  OrderList[]
+model Kos {
+  id              Int        @id @default(autoincrement())
+  uuid            String     @unique @default(uuid())
+  name            String     @default("")
+  alamat          String     @default("") @db.Text
+  kos_picture     String     @default("") // main kos picture 
+  description     String     @default("") @db.Text
+  peraturan_kos   String     @default("") @db.Text 
+  gender_type     GenderType @default(CAMPUR) 
+  available_rooms Int        @default(0) // jumlah kamar yang tersedia
+  total_rooms     Int        @default(0) // total kamar
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  // Relations
+  owner           User?      @relation("KosOwner", fields: [ownerId], references: [id])
+  ownerId         Int?
+  rooms           Room[]
+  reviews         Review[]
+  facilities      Facility[] // Fasilitas kos dan kamar menggunakan model Facility
 }
 
-model Order {
-  id             Int         @id @default(autoincrement())
-  uuid           String      @unique @default("")
-  total_price    Int         @default(0)
-  payment_method Payment     @default(CASH)
-  status         Status      @default(NEW)
-  address        String      @default("") @db.Text
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  orderLists     OrderList[]
-  User           User?       @relation(fields: [userId], references: [id])
-  userId         Int?
+model Room {
+  id                Int        @id @default(autoincrement())
+  uuid              String     @unique @default(uuid())
+  room_number       String     @default("")
+  tipe              String     @default("") // SINGLE, DOUBLE, SHARED, VIP
+  room_picture      String     @default("") 
+  harga             Int        @default(0) // price per month
+  status            RoomStatus @default(AVAILABLE)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  // Relations
+  kos               Kos        @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  kosId             Int
+  bookings          Booking[]
+  facilities        Facility[] // Fasilitas kamar menggunakan model Facility
 }
 
-model OrderList {
-  id             Int      @id @default(autoincrement())
-  uuid           String   @unique @default("")
-  note           String   @default("") @db.Text
-  quantity       Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  Motorbike      Motorbike?    @relation(fields: [MotorbikeId], references: [id])
-  MotorbikeId    Int?
-  Order          Order?   @relation(fields: [orderId], references: [id])
-  orderId        Int?
+model Booking {
+  id              Int           @id @default(autoincrement())
+  uuid            String        @unique @default(uuid())
+  start_date      DateTime
+  end_date        DateTime
+  total_price     Int           @default(0)
+  status          BookingStatus @default(PENDING)
+  notes           String        @default("") @db.Text
+  invoice_number  String        @default("") // Nomor invoice untuk bukti pemesanan
+  invoice_pdf     String        @default("") // Path ke file PDF bukti pemesanan
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  // Relations
+  user            User          @relation(fields: [userId], references: [id])
+  userId          Int
+  room            Room          @relation(fields: [roomId], references: [id])
+  roomId          Int
+}
+
+// Model baru untuk review/komentar
+model Review {
+  id              Int       @id @default(autoincrement())
+  uuid            String    @unique @default(uuid())
+  content         String    @db.Text
+  rating          Int       @default(0) // Rating 1-5
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  kos             Kos       @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  kosId           Int
+  
+  // Society yang membuat review
+  user            User      @relation("UserReviews", fields: [userId], references: [id])
+  userId          Int
+  
+  // Balasan dari owner (opsional)
+  reply_content   String?   @db.Text
+  reply_at        DateTime?
+  owner           User?     @relation("OwnerReplies", fields: [ownerId], references: [id])
+  ownerId         Int?
+}
+
+// Model fasilitas yang sudah diperbaiki - bisa untuk kos dan room
+model Facility {
+  id              Int          @id @default(autoincrement())
+  uuid            String       @unique @default(uuid())
+  name            String
+  description     String       @db.Text
+  icon            String       @default("") // Icon atau gambar fasilitas
+  facility_type   FacilityType @default(KOS_FACILITY) // Tipe fasilitas
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  // Relations - bisa untuk kos atau room
+  kos             Kos?         @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  kosId           Int?
+  room            Room?        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId          Int?
 }

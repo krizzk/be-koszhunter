@@ -1,24 +1,21 @@
 import express from "express"
-import { getAllUsers, createUser, updateUser, deleteUser, changePicture, authentication, getUserById } from "../controllers/userController"
-import { verifyAddUser, verifyEditUser, verifyAuthentication } from "../middlewares/userValidation"
-import uploadFile from "../middlewares/profilUpload"
-import { verifyToken, verifyRole } from "../middlewares/authorization"
+import {
+  getAllUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+  changePicture,
+  authentication,
+  getUserById,
+  getDashboard,
+  getPopularKos,
+} from "../controllers/userController"
+import { verifyAddUser, verifyEditUser, verifyAuthentication } from "../middleware/userValidation"
+import uploadFile from "../middleware/profileUpload"
+import { verifyToken, verifyRole } from "../middleware/authorization"
 
 const app = express()
 app.use(express.json())
-
-app.get(`/`, [verifyToken, verifyRole(["ADMIN"])], getAllUsers)
-app.get(`/profile`, [verifyToken, verifyRole(["USER", "ADMIN"])], getUserById)
-
-app.post(`/create`, [uploadFile.single("profile_picture"), verifyAddUser], createUser)
-app.put(`/:id`, [verifyToken, verifyRole(["USER", "ADMIN"]), uploadFile.single("profile_picture"), verifyEditUser], updateUser)
-app.put(`/profile/:id`, [verifyToken, verifyRole(["USER", "ADMIN"]), uploadFile.single("profile_picture")], changePicture)
-app.delete(`/:id`, [verifyToken, verifyRole(["ADMIN"])], deleteUser)
-
-app.post(`/login`, [verifyAuthentication], authentication)
-
-
-export default app
 
 /**
  * @swagger
@@ -28,7 +25,7 @@ export default app
  *       type: object
  *       properties:
  *         id:
- *           type: string
+ *           type: integer
  *         name:
  *           type: string
  *         email:
@@ -36,6 +33,11 @@ export default app
  *         password:
  *           type: string
  *         profile_picture:
+ *           type: string
+ *         role:
+ *           type: string
+ *           enum: [OWNER, SOCIETY]
+ *         phone_number:
  *           type: string
  *         createdAt:
  *           type: string
@@ -45,17 +47,18 @@ export default app
  *           format: datetime
  *       example:
  *         id: 1
- *         name: kasir
- *         email: kasir@gmail.com
- *         password: c7911af3adbd12a035b289556d96470a
- *         profile_picture: 1727836764174-Picture1.png
- *         role: CASHIER
- *         createdAt: 2024-09-27T07:43:59.025Z
- *         updatedAt: 2024-10-29T09:34:34.999Z
+ *         name: "John Doe"
+ *         email: "john@gmail.com"
+ *         role: "SOCIETY"
+ *         phone_number: "08123456789"
  * tags:
  *   name: Users
- *   description: The users managing API
- * /user/login:
+ *   description: User management API
+ */
+
+/**
+ * @swagger
+ * /users/login:
  *   post:
  *     summary: Login User
  *     tags: [Users]
@@ -71,110 +74,75 @@ export default app
  *               password:
  *                 type: string
  *             example:
- *               email: manager@gmail.com
+ *               email: "user@gmail.com"
  *               password: "123"
  *     responses:
  *       200:
  *         description: Login Success
- * /user/profile:
+ * /users/profile:
  *   get:
- *     summary: get profile user
+ *     summary: Get user profile
  *     tags: [Users]
  *     responses:
  *       200:
- *         description: get profile success
- * /user:
+ *         description: Profile retrieved successfully
+ * /users:
  *   get:
- *     summary: Lists all the users
+ *     summary: Get all users (OWNER only)
  *     tags: [Users]
  *     responses:
  *       200:
- *         description: The list of the users
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/User'
+ *         description: Users retrieved successfully
  *   post:
- *     summary: Create a new user
+ *     summary: Create new user
  *     tags: [Users]
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/User'
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [OWNER, SOCIETY]
+ *               phone_number:
+ *                 type: string
+ *               profile_picture:
+ *                 type: string
+ *                 format: binary
  *     responses:
- *       200:
- *         description: The created user.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- *       500:
- *         description: Some server error
- * /user/{id}:
- *   get:
- *     summary: Get the user by id
- *     tags: [Users]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: The user id
- *     responses:
- *       200:
- *         description: The user response by id
- *         contens:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- *       404:
- *         description: The user was not found
- *   put:
- *    summary: Update the user by the id
- *    tags: [Users]
- *    parameters:
- *      - in: path
- *        name: id
- *        schema:
- *          type: string
- *        required: true
- *        description: The user id
- *    requestBody:
- *      required: true
- *      content:
- *        application/json:
- *          schema:
- *            $ref: '#/components/schemas/User'
- *    responses:
- *      200:
- *        description: The user was updated
- *        content:
- *          application/json:
- *            schema:
- *              $ref: '#/components/schemas/User'
- *      404:
- *        description: The user was not found
- *      500:
- *        description: Some error happened
- *   delete:
- *     summary: Remove the user by id
- *     tags: [Users]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: The user id
- *
- *     responses:
- *       200:
- *         description: The user was deleted
- *       404:
- *         description: The user was not found
+ *       201:
+ *         description: User created successfully
  */
+
+// User management routes
+app.get(`/`, [verifyToken, verifyRole(["OWNER"])], getAllUsers)
+app.get(`/profile`, [verifyToken, verifyRole(["SOCIETY", "OWNER"])], getUserById)
+
+app.post(`/`, [uploadFile.single("profile_picture"), verifyAddUser], createUser)
+app.put(
+  `/:id`,
+  [verifyToken, verifyRole(["SOCIETY", "OWNER"]), uploadFile.single("profile_picture"), verifyEditUser],
+  updateUser,
+)
+app.put(
+  `/profile/:id`,
+  [verifyToken, verifyRole(["SOCIETY", "OWNER"]), uploadFile.single("profile_picture")],
+  changePicture,
+)
+app.delete(`/:id`, [verifyToken, verifyRole(["OWNER"])], deleteUser)
+
+app.post(`/login`, [verifyAuthentication], authentication)
+
+// Dashboard routes - dipindahkan dari reports
+app.get(`/dashboard`, [verifyToken, verifyRole(["SOCIETY", "OWNER"])], getDashboard)
+app.get(`/popular-kos`, [verifyToken, verifyRole(["SOCIETY", "OWNER"])], getPopularKos)
+
+export default app
