@@ -1,6 +1,6 @@
-# Ordering System Backend
+# koszhunter System Backend
 
-Backend project for managing the ordering system from manager and cashier using Node.js and Prisma ORM.
+Backend project for managing the koszhunter system from owner and society using Node.js and Prisma ORM.
 
 ### Requirements
 Before you begin, make sure you have the following installed:
@@ -13,11 +13,11 @@ Follow the steps below to clone the repository, set up the environment, and run 
 
 1. Clone the Repository
 
-    `git clone https://github.com/whynaa/be_fooder.git`
+    `git clone https://github.com/krizzk/be-koszhunter.git`
   
 2. Change directory
 
-   `cd ordering_system_backend`
+   `cd be-koszhunter`
   
 4. Install Dependencies
 
@@ -33,9 +33,9 @@ Follow the steps below to clone the repository, set up the environment, and run 
 
   Create a .env file in the root directory and configure your database connection. Below is an example of the .env file:
     
-    DATABASE_URL="mysql://whyna:moklet123@127.0.0.1:3306/ordering_system"
+    DATABASE_URL="mysql://root@localhost:3306/kosz_hunter"
     PORT=8000
-    SECRET=moklet
+    SECRET=kosz
     
   Replace user, password, and localhost:5432 with your PostgreSQL credentials and database details.
 
