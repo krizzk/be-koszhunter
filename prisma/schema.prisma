@@ -68,9 +68,10 @@ model Kos {
   kos_picture     String     @default("") // main kos picture 
   description     String     @default("") @db.Text
   peraturan_kos   String     @default("") @db.Text 
+  fasilitas_umum  String     @default("") @db.Text // fasilitas umum kos
   gender_type     GenderType @default(CAMPUR) 
-  available_rooms Int        @default(0) // jumlah kamar yang tersedia
-  total_rooms     Int        @default(0) // total kamar
+  available_rooms Int        @default(0) // jumlah kamar yang tersedia (otomatis dari room AVAILABLE)
+  total_rooms     Int        @default(0) // total kamar (otomatis dari jumlah room yang dibuat)
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   // Relations
@@ -87,6 +88,7 @@ model Room {
   room_number       String     @default("")
   tipe              String     @default("") // SINGLE, DOUBLE, SHARED, VIP
   room_picture      String     @default("") 
+  fasilitas_kamar   String     @default("") @db.Text // fasilitas kamar
   harga             Int        @default(0) // price per month
   status            RoomStatus @default(AVAILABLE)
   createdAt         DateTime   @default(now())

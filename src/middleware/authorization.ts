@@ -12,20 +12,27 @@ interface JwtPayload {
 }
 
 export const verifyToken = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.headers.authorization?.split(" ")[1]
+  const authHeader = req.headers.authorization
+
+  if (!authHeader) {
+    return res.status(403).json({
+      status: false,
+      message: "Access denied. No authorization header provided.",
+    })
+  }
+
+  const token = authHeader.split(" ")[1]
 
   if (!token) {
     return res.status(403).json({
       status: false,
-      message: "Access denied. No token provided.",
+      message: "Access denied. Token format should be: Bearer <token>",
     })
   }
 
   try {
     const secretKey = SECRET || "joss"
     const decoded = verify(token, secretKey) as JwtPayload
-
-    console.log("Decoded token:", decoded)
 
     req.body.user = {
       id: decoded.id,
@@ -36,14 +43,12 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction) => 
       profile_picture: decoded.profile_picture,
     }
 
-    console.log("User saved to request:", req.body.user)
-
     next()
   } catch (error) {
-    console.error("Token verification error:", error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
     return res.status(401).json({
       status: false,
-      message: "Invalid token.",
+      message: `Invalid token: ${errorMessage}`,
     })
   }
 }
@@ -51,9 +56,6 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction) => 
 export const verifyRole = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = req.body.user
-
-    console.log("User in verifyRole:", user)
-    console.log("Allowed roles:", allowedRoles)
 
     if (!user) {
       return res.status(403).json({

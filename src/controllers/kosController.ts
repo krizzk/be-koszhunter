@@ -20,7 +20,7 @@ export const getAllKos = async (request: Request, response: Response) => {
       whereCondition.gender_type = gender_type
     }
 
-    /** process to get kos with available rooms count and facilities */
+    /** process to get kos with calculated rooms count and facilities */
     const allKos = await prisma.kos.findMany({
       where: whereCondition,
       include: {
@@ -29,11 +29,10 @@ export const getAllKos = async (request: Request, response: Response) => {
             id: true,
             name: true,
             phone_number: true,
+            email: true,
           },
         },
-        rooms: {
-          where: { status: "AVAILABLE" },
-        },
+        rooms: true, // Get all rooms to calculate counts
         facilities: {
           where: { facility_type: "KOS_FACILITY" },
           select: {
@@ -46,17 +45,20 @@ export const getAllKos = async (request: Request, response: Response) => {
       },
     })
 
-    /** calculate available rooms for each kos */
-    const kosWithAvailableRooms = allKos.map((kos) => ({
+    /** calculate room counts for each kos */
+    const kosWithRoomCounts = allKos.map((kos) => ({
       ...kos,
-      available_rooms: kos.rooms.length,
+      total_rooms: kos.rooms.length,
+      available_rooms: kos.rooms.filter((room) => room.status === "AVAILABLE").length,
+      occupied_rooms: kos.rooms.filter((room) => room.status === "OCCUPIED").length,
+      maintenance_rooms: kos.rooms.filter((room) => room.status === "MAINTENANCE").length,
       rooms: undefined, // remove rooms from response to keep it clean
     }))
 
     return response
       .json({
         status: true,
-        data: kosWithAvailableRooms,
+        data: kosWithRoomCounts,
         message: `Kos list has been retrieved`,
       })
       .status(200)
@@ -126,10 +128,19 @@ export const getKosById = async (request: Request, response: Response) => {
         .status(404)
     }
 
+    /** Add calculated room counts */
+    const kosWithCounts = {
+      ...kos,
+      total_rooms: kos.rooms.length,
+      available_rooms: kos.rooms.filter((room) => room.status === "AVAILABLE").length,
+      occupied_rooms: kos.rooms.filter((room) => room.status === "OCCUPIED").length,
+      maintenance_rooms: kos.rooms.filter((room) => room.status === "MAINTENANCE").length,
+    }
+
     return response
       .json({
         status: true,
-        data: kos,
+        data: kosWithCounts,
         message: `Kos details has been retrieved`,
       })
       .status(200)
@@ -145,16 +156,12 @@ export const getKosById = async (request: Request, response: Response) => {
 
 export const createKos = async (request: Request, response: Response) => {
   try {
-    /** get requested data - hapus fasilitas_umum */
-    const { name, alamat, description, peraturan_kos, gender_type, total_rooms } = request.body
-
+    /** get requested data */
+    const { name, alamat, description, peraturan_kos, fasilitas_umum, gender_type } = request.body
     const user = request.body.user
     const uuid = uuidv4()
 
-    console.log("Request body:", request.body)
-    console.log("User from middleware:", user)
-
-    /** check if user exists */
+    /** check if user exists and is authenticated */
     if (!user) {
       return response.status(401).json({
         status: false,
@@ -170,11 +177,19 @@ export const createKos = async (request: Request, response: Response) => {
       })
     }
 
+    /** validate required fields */
+    if (!name || !alamat || !gender_type) {
+      return response.status(400).json({
+        status: false,
+        message: "Name, alamat, and gender_type are required fields",
+      })
+    }
+
     /** variable filename for uploaded file */
     let filename = ""
     if (request.file) filename = request.file.filename
 
-    /** process to save new kos - hapus fasilitas_umum */
+    /** process to save new kos */
     const newKos = await prisma.kos.create({
       data: {
         uuid,
@@ -182,9 +197,10 @@ export const createKos = async (request: Request, response: Response) => {
         alamat,
         description: description || "",
         peraturan_kos: peraturan_kos || "",
+        fasilitas_umum: fasilitas_umum || "",
         gender_type,
-        total_rooms: Number(total_rooms),
-        available_rooms: Number(total_rooms),
+        total_rooms: 0,
+        available_rooms: 0,
         kos_picture: filename,
         ownerId: Number(user.id),
       },
@@ -194,6 +210,7 @@ export const createKos = async (request: Request, response: Response) => {
             id: true,
             name: true,
             phone_number: true,
+            email: true,
           },
         },
       },
@@ -203,17 +220,16 @@ export const createKos = async (request: Request, response: Response) => {
       .json({
         status: true,
         data: newKos,
-        message: `New kos has been created`,
+        message: `New kos "${newKos.name}" has been created successfully`,
       })
-      .status(200)
+      .status(201)
   } catch (error) {
-    console.error("Error creating kos:", error)
     return response
       .json({
         status: false,
-        message: `There is an error. ${error}`,
+        message: `There is an error creating kos: ${error}`,
       })
-      .status(400)
+      .status(500)
   }
 }
 
@@ -221,9 +237,8 @@ export const updateKos = async (request: Request, response: Response) => {
   try {
     /** get id from params */
     const { id } = request.params
-    /** get requested data - hapus fasilitas_umum */
-    const { name, alamat, description, peraturan_kos, gender_type, total_rooms } = request.body
-
+    /** get requested data */
+    const { name, alamat, description, peraturan_kos, fasilitas_umum, gender_type } = request.body
     const user = request.body.user
 
     /** check if user exists */
@@ -235,7 +250,19 @@ export const updateKos = async (request: Request, response: Response) => {
     }
 
     /** make sure kos exists */
-    const findKos = await prisma.kos.findFirst({ where: { id: Number(id) } })
+    const findKos = await prisma.kos.findFirst({
+      where: { id: Number(id) },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            phone_number: true,
+          },
+        },
+      },
+    })
+
     if (!findKos) {
       return response.status(404).json({ status: false, message: `Kos not found` })
     }
@@ -258,15 +285,15 @@ export const updateKos = async (request: Request, response: Response) => {
       if (exists && findKos.kos_picture !== ``) fs.unlinkSync(path)
     }
 
-    /** process to update kos - hapus fasilitas_umum */
+    /** process to update kos */
     const updatedKos = await prisma.kos.update({
       data: {
         name: name || findKos.name,
         alamat: alamat || findKos.alamat,
         description: description || findKos.description,
         peraturan_kos: peraturan_kos || findKos.peraturan_kos,
+        fasilitas_umum: fasilitas_umum || findKos.fasilitas_umum,
         gender_type: gender_type || findKos.gender_type,
-        total_rooms: total_rooms ? Number(total_rooms) : findKos.total_rooms,
         kos_picture: filename,
       },
       where: { id: Number(id) },
@@ -278,13 +305,22 @@ export const updateKos = async (request: Request, response: Response) => {
             phone_number: true,
           },
         },
+        rooms: true,
       },
     })
+
+    /** Add calculated room counts to response */
+    const kosWithCounts = {
+      ...updatedKos,
+      total_rooms: updatedKos.rooms.length,
+      available_rooms: updatedKos.rooms.filter((room) => room.status === "AVAILABLE").length,
+      rooms: undefined,
+    }
 
     return response
       .json({
         status: true,
-        data: updatedKos,
+        data: kosWithCounts,
         message: `Kos has been updated`,
       })
       .status(200)
@@ -331,7 +367,7 @@ export const deleteKos = async (request: Request, response: Response) => {
     const exists = fs.existsSync(path)
     if (exists && findKos.kos_picture !== ``) fs.unlinkSync(path)
 
-    /** process to delete kos (rooms and facilities will be deleted automatically due to cascade) */
+    /** process to delete kos */
     const deletedKos = await prisma.kos.delete({
       where: { id: Number(id) },
     })

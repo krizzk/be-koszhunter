@@ -357,6 +357,25 @@ export const authentication = async (request: Request, response: Response) => {
   }
 }
 
+// Test endpoint untuk debug token
+export const testToken = async (request: Request, response: Response) => {
+  try {
+    const user = request.body.user
+
+    return response.json({
+      status: true,
+      message: "Token is valid and user authenticated",
+      user: user,
+      headers: request.headers,
+    })
+  } catch (error) {
+    return response.status(400).json({
+      status: false,
+      message: `There is an error. ${error}`,
+    })
+  }
+}
+
 // DASHBOARD FUNCTIONS - Dipindahkan dari reportController
 export const getDashboard = async (request: Request, response: Response) => {
   try {

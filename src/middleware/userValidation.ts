@@ -7,7 +7,7 @@ const addDataSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(3).alphanum().required(),
   phone_number: Joi.string().min(10).required(),
-  role: Joi.string().valid("OWNER", "SOCIETY").uppercase().required(),
+  role: Joi.string().valid("OWNER", "SOCIETY").optional(),
   profile_picture: Joi.allow().optional(),
   user: Joi.optional(),
 })

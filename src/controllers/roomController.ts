@@ -150,14 +150,26 @@ export const getRoomById = async (request: Request, response: Response) => {
 
 export const createRoom = async (request: Request, response: Response) => {
   try {
-    /** get requested data - hapus fasilitas_kamar */
-    const { kosId, room_number, tipe, harga } = request.body
+    /** get requested data */
+    const { kosId, room_number, tipe, fasilitas_kamar, harga } = request.body
 
     const user = request.body.user
     const uuid = uuidv4()
 
     /** check if kos exists and user is the owner */
-    const kos = await prisma.kos.findFirst({ where: { id: Number(kosId) } })
+    const kos = await prisma.kos.findFirst({
+      where: { id: Number(kosId) },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            phone_number: true,
+          },
+        },
+      },
+    })
+
     if (!kos) {
       return response.status(404).json({
         status: false,
@@ -165,10 +177,25 @@ export const createRoom = async (request: Request, response: Response) => {
       })
     }
 
-    if (user.role !== "OWNER" || kos.ownerId !== user.id) {
+    if (user.role !== "OWNER" || kos.ownerId !== Number(user.id)) {
       return response.status(403).json({
         status: false,
         message: "You can only add rooms to your own kos",
+      })
+    }
+
+    /** Check if room number already exists in this kos */
+    const existingRoom = await prisma.room.findFirst({
+      where: {
+        kosId: Number(kosId),
+        room_number: room_number,
+      },
+    })
+
+    if (existingRoom) {
+      return response.status(400).json({
+        status: false,
+        message: `Room number ${room_number} already exists in this kos`,
       })
     }
 
@@ -176,15 +203,17 @@ export const createRoom = async (request: Request, response: Response) => {
     let filename = ""
     if (request.file) filename = request.file.filename
 
-    /** process to save new room - hapus fasilitas_kamar */
+    /** process to save new room */
     const newRoom = await prisma.room.create({
       data: {
         uuid,
         kosId: Number(kosId),
         room_number,
         tipe,
+        fasilitas_kamar: fasilitas_kamar || "",
         harga: Number(harga),
         room_picture: filename,
+        status: "AVAILABLE", // Default status
       },
       include: {
         kos: {
@@ -197,12 +226,24 @@ export const createRoom = async (request: Request, response: Response) => {
       },
     })
 
-    /** update available rooms count in kos */
-    await prisma.kos.update({
+    /** Update total_rooms dan available_rooms di kos secara otomatis */
+    const updatedKos = await prisma.kos.update({
       where: { id: Number(kosId) },
       data: {
-        available_rooms: {
+        total_rooms: {
           increment: 1,
+        },
+        available_rooms: {
+          increment: 1, // Karena room baru statusnya AVAILABLE
+        },
+      },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            phone_number: true,
+          },
         },
       },
     })
@@ -210,10 +251,18 @@ export const createRoom = async (request: Request, response: Response) => {
     return response
       .json({
         status: true,
-        data: newRoom,
-        message: `New room has been created`,
+        data: {
+          room: newRoom,
+          kos_updated: {
+            id: updatedKos.id,
+            name: updatedKos.name,
+            total_rooms: updatedKos.total_rooms,
+            available_rooms: updatedKos.available_rooms,
+          },
+        },
+        message: `New room has been created and kos room count updated`,
       })
-      .status(200)
+      .status(201)
   } catch (error) {
     return response
       .json({
@@ -228,8 +277,8 @@ export const updateRoom = async (request: Request, response: Response) => {
   try {
     /** get id from params */
     const { id } = request.params
-    /** get requested data - hapus fasilitas_kamar */
-    const { room_number, tipe, harga, status } = request.body
+    /** get requested data */
+    const { room_number, tipe, fasilitas_kamar, harga, status } = request.body
 
     const user = request.body.user
 
@@ -244,11 +293,29 @@ export const updateRoom = async (request: Request, response: Response) => {
     }
 
     /** check if user is the owner */
-    if (user.role !== "OWNER" || findRoom.kos.ownerId !== user.id) {
+    if (user.role !== "OWNER" || findRoom.kos.ownerId !== Number(user.id)) {
       return response.status(403).json({
         status: false,
         message: "You can only update rooms in your own kos",
       })
+    }
+
+    /** Check if room number already exists in this kos (exclude current room) */
+    if (room_number && room_number !== findRoom.room_number) {
+      const existingRoom = await prisma.room.findFirst({
+        where: {
+          kosId: findRoom.kosId,
+          room_number: room_number,
+          id: { not: Number(id) }, // Exclude current room
+        },
+      })
+
+      if (existingRoom) {
+        return response.status(400).json({
+          status: false,
+          message: `Room number ${room_number} already exists in this kos`,
+        })
+      }
     }
 
     /** handle file upload */
@@ -261,13 +328,18 @@ export const updateRoom = async (request: Request, response: Response) => {
       if (exists && findRoom.room_picture !== ``) fs.unlinkSync(path)
     }
 
-    /** process to update room - hapus fasilitas_kamar */
+    /** Track status change for kos room count update */
+    const oldStatus = findRoom.status
+    const newStatus = status || findRoom.status
+
+    /** process to update room */
     const updatedRoom = await prisma.room.update({
       data: {
         room_number: room_number || findRoom.room_number,
         tipe: tipe || findRoom.tipe,
+        fasilitas_kamar: fasilitas_kamar || findRoom.fasilitas_kamar,
         harga: harga ? Number(harga) : findRoom.harga,
-        status: status || findRoom.status,
+        status: newStatus,
         room_picture: filename,
       },
       where: { id: Number(id) },
@@ -281,6 +353,29 @@ export const updateRoom = async (request: Request, response: Response) => {
         },
       },
     })
+
+    /** Update available_rooms count in kos if status changed */
+    if (oldStatus !== newStatus) {
+      let availableRoomsChange = 0
+
+      // Calculate change in available rooms
+      if (oldStatus === "AVAILABLE" && newStatus !== "AVAILABLE") {
+        availableRoomsChange = -1 // Room became unavailable
+      } else if (oldStatus !== "AVAILABLE" && newStatus === "AVAILABLE") {
+        availableRoomsChange = 1 // Room became available
+      }
+
+      if (availableRoomsChange !== 0) {
+        await prisma.kos.update({
+          where: { id: findRoom.kosId },
+          data: {
+            available_rooms: {
+              increment: availableRoomsChange,
+            },
+          },
+        })
+      }
+    }
 
     return response
       .json({
@@ -316,12 +411,30 @@ export const deleteRoom = async (request: Request, response: Response) => {
     }
 
     /** check if user is the owner */
-    if (user.role !== "OWNER" || findRoom.kos.ownerId !== user.id) {
+    if (user.role !== "OWNER" || findRoom.kos.ownerId !== Number(user.id)) {
       return response.status(403).json({
         status: false,
         message: "You can only delete rooms in your own kos",
       })
     }
+
+    /** Check if room has active bookings */
+    const activeBookings = await prisma.booking.findMany({
+      where: {
+        roomId: Number(id),
+        status: { in: ["PENDING", "CONFIRMED"] },
+      },
+    })
+
+    if (activeBookings.length > 0) {
+      return response.status(400).json({
+        status: false,
+        message: "Cannot delete room with active bookings. Please cancel or complete all bookings first.",
+      })
+    }
+
+    /** Track room status for kos count update */
+    const roomStatus = findRoom.status
 
     /** delete room picture */
     const path = `${BASE_URL}/../public/room_picture/${findRoom.room_picture}`
@@ -333,12 +446,20 @@ export const deleteRoom = async (request: Request, response: Response) => {
       where: { id: Number(id) },
     })
 
-    /** update available rooms count in kos */
-    await prisma.kos.update({
+    /** Update total_rooms dan available_rooms count in kos */
+    let availableRoomsDecrement = 0
+    if (roomStatus === "AVAILABLE") {
+      availableRoomsDecrement = 1
+    }
+
+    const updatedKos = await prisma.kos.update({
       where: { id: findRoom.kosId },
       data: {
-        available_rooms: {
+        total_rooms: {
           decrement: 1,
+        },
+        available_rooms: {
+          decrement: availableRoomsDecrement,
         },
       },
     })
@@ -346,8 +467,15 @@ export const deleteRoom = async (request: Request, response: Response) => {
     return response
       .json({
         status: true,
-        data: deletedRoom,
-        message: `Room has been deleted`,
+        data: {
+          deleted_room: deletedRoom,
+          kos_updated: {
+            id: updatedKos.id,
+            total_rooms: updatedKos.total_rooms,
+            available_rooms: updatedKos.available_rooms,
+          },
+        },
+        message: `Room has been deleted and kos room count updated`,
       })
       .status(200)
   } catch (error) {

@@ -1,20 +1,22 @@
 import type { NextFunction, Request, Response } from "express"
 import Joi from "joi"
 
-/** create schema when add new room data, all required fields - hapus fasilitas_kamar */
+/** create schema when add new room data, all required fields */
 const addDataSchema = Joi.object({
   kosId: Joi.number().required(),
   room_number: Joi.string().required(),
   tipe: Joi.string().required(),
+  fasilitas_kamar: Joi.string().optional(),
   harga: Joi.number().min(0).required(),
   room_picture: Joi.allow().optional(),
   user: Joi.optional(),
 })
 
-/** create schema when edit room data, all fields are optional - hapus fasilitas_kamar */
+/** create schema when edit room data, all fields are optional */
 const editDataSchema = Joi.object({
   room_number: Joi.string().optional(),
   tipe: Joi.string().optional(),
+  fasilitas_kamar: Joi.string().optional(),
   harga: Joi.number().min(0).optional(),
   status: Joi.string().valid("AVAILABLE", "OCCUPIED", "MAINTENANCE").uppercase().optional(),
   room_picture: Joi.allow().optional(),

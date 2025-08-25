@@ -425,6 +425,7 @@ export const generateInvoice = async (request: Request, response: Response) => {
     const { id } = request.params
     const user = request.body.user
 
+    // Check if user exists and is authenticated
     if (!user) {
       return response.status(401).json({
         status: false,
@@ -578,7 +579,7 @@ export const getBookingHistory = async (request: Request, response: Response) =>
     const { startDate, endDate, month, year } = request.query
     const user = request.body.user
 
-    // Check if user exists and is an owner
+    // Check if user exists and is authenticated
     if (!user) {
       return response.status(401).json({
         status: false,
@@ -586,6 +587,7 @@ export const getBookingHistory = async (request: Request, response: Response) =>
       })
     }
 
+    // Check if user is an owner
     if (user.role !== "OWNER") {
       return response.status(403).json({
         status: false,

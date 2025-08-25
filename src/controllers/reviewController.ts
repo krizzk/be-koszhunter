@@ -134,7 +134,7 @@ export const replyToReview = async (request: Request, response: Response) => {
     const { reply_content } = request.body
     const user = request.body.user
 
-    // Check if user exists and is an owner
+    // Check if user exists
     if (!user) {
       return response.status(401).json({
         status: false,
@@ -142,6 +142,7 @@ export const replyToReview = async (request: Request, response: Response) => {
       })
     }
 
+    // Check if user is an owner
     if (user.role !== "OWNER") {
       return response.status(403).json({
         status: false,
